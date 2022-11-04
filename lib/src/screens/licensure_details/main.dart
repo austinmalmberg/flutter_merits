@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_merits/src/application_error.dart';
 import 'package:provider/provider.dart';
 
 import '../../data/licensure_summary.dart';
 import '../../data/licensure_details.dart';
+import '../../providers/editing_controller.dart';
 import '../../providers/licensure_provider.dart';
 import '../../services/licensure_service.dart';
 import '../../theme/licensure_type.dart';
@@ -12,7 +14,7 @@ import '_tab_details.dart';
 class LicensureDetailsScreen extends StatefulWidget {
   final LicensureSummary? summary;
 
-  /// The index of the [summary] within the [LicensureProvider]'s licensure list.
+  /// The index of the [summary] within the [LicensuresProvider]'s licensure list.
   ///
   /// If provided, the index will be updated if a new record is added or an existing record is modified.
   final int? index;
@@ -26,13 +28,103 @@ class LicensureDetailsScreen extends StatefulWidget {
 class _LicensureDetailsScreenState extends State<LicensureDetailsScreen> {
   final GlobalKey<FormState> _formKey = GlobalKey<FormState>();
 
+  final ValueNotifier<bool> isEditing = ValueNotifier<bool>(false);
+
+  @override
+  Widget build(BuildContext context) {
+    return FutureBuilder<LicensureDetails>(
+      future: _getLicensureDetails(context),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState != ConnectionState.done || snapshot.hasError) {
+          return Scaffold(
+            appBar: AppBar(),
+            body: Center(
+              child: snapshot.connectionState != ConnectionState.done
+                  ? const CircularProgressIndicator()
+                  : Text(snapshot.error!.toString()),
+            ),
+          );
+        }
+
+        LicensureDetails details = snapshot.data!;
+
+        return MultiProvider(
+          providers: [
+            ChangeNotifierProvider<LicensureDetails>.value(
+              value: details,
+            ),
+            ChangeNotifierProvider<EditingController>(
+              // Editing is enabled by default for new records
+              create: (context) => EditingController(details.isNewRecord),
+            ),
+          ],
+          builder: (context, child) => Scaffold(
+            appBar: AppBar(
+              backgroundColor: details.licensureType == null ? null : getLicensureTypeColor(details.licensureType!),
+              actions: <Widget>[
+                Padding(
+                  padding: const EdgeInsets.all(12.0),
+                  child: Builder(
+                    builder: (context) {
+                      EditingController editingController = Provider.of<EditingController>(context);
+                      LicensureDetails details = Provider.of<LicensureDetails>(context);
+
+                      Color? appBarColor = details.licensureType == null
+                          ? Theme.of(context).appBarTheme.backgroundColor
+                          : getLicensureTypeColor(details.licensureType!);
+                      Color textColor = _getContrastingColor(appBarColor);
+
+                      if (editingController.isEditing) {
+                        return TextButton.icon(
+                          onPressed: () async => await _handleSaveRecordAndExit(context, details),
+                          icon: const Icon(Icons.save),
+                          label: const Text('Save'),
+                          style: TextButton.styleFrom(
+                            foregroundColor: textColor,
+                          ),
+                        );
+                      }
+
+                      return TextButton.icon(
+                        onPressed: () => editingController.isEditing = true,
+                        icon: const Icon(Icons.edit),
+                        label: const Text('Edit'),
+                        style: TextButton.styleFrom(
+                          foregroundColor: textColor,
+                        ),
+                      );
+                    },
+                  ),
+                ),
+              ],
+            ),
+            body: Form(
+              key: _formKey,
+              onWillPop: () async => await _isExitDesired(context, details),
+              child: _LicensureDetailsPage(details: details),
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Future<LicensureDetails> _getLicensureDetails(BuildContext context) async {
+    if (widget.summary == null) {
+      return LicensureDetails.newRecord();
+    }
+
+    LicensureService service = Provider.of<LicensureService>(context, listen: false);
+    return await service.getLicensureDetailsById(widget.summary!.id);
+  }
+
   Future<bool> _isExitDesired(BuildContext context, [LicensureDetails? details]) async {
     if (details == null || details.isNewRecord || !details.isModified) {
       // Exit if unchanged
       return true;
     }
 
-    LicensureProvider licensureProvider = Provider.of<LicensureProvider>(context, listen: false);
+    LicensuresProvider licensureProvider = Provider.of<LicensuresProvider>(context, listen: false);
     LicensureService licensureService = Provider.of<LicensureService>(context, listen: false);
 
     bool? saveChanges = await showDialog<bool>(
@@ -68,17 +160,51 @@ class _LicensureDetailsScreenState extends State<LicensureDetailsScreen> {
     try {
       await _saveRecord(licensureService, details, licensureProvider);
     } on DataException catch (ex) {
-      await showDialog(
-        context: context,
-        builder: (context) => SimpleDialog(
-          title: Text(ex.message),
-        ),
-      );
+      await _showSaveErrorDialog(ex);
 
       return false;
     }
 
     return true;
+  }
+
+  Future<void> _handleSaveRecordAndExit(BuildContext context, LicensureDetails details) async {
+    LicensureService licensureService = Provider.of<LicensureService>(context, listen: false);
+    LicensuresProvider licensureProvider = Provider.of<LicensuresProvider>(context, listen: false);
+
+    NavigatorState navigator = Navigator.of(context);
+
+    try {
+      await _saveRecord(licensureService, details, licensureProvider);
+
+      navigator.pop();
+    } on DataException catch (ex) {
+      await _showSaveErrorDialog(ex);
+    }
+  }
+
+  Future<void> _showSaveErrorDialog(ApplicationException ex) async {
+    return await showDialog(
+      context: context,
+      builder: (context) => SimpleDialog(
+        title: const Text('Save Error'),
+        children: <Widget>[
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 24.0).copyWith(bottom: 20.0),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(ex.message),
+              ],
+            ),
+          ),
+          TextButton(
+            child: const Text('OK'),
+            onPressed: () => Navigator.of(context).pop(),
+          ),
+        ],
+      ),
+    );
   }
 
   /// Saves the [details], updates the id for new records, and resets its modification state.
@@ -88,7 +214,7 @@ class _LicensureDetailsScreenState extends State<LicensureDetailsScreen> {
   /// Throws a [LicensureTypeRequiredException] when [details.licensureType] is null.
   /// Throws a [PersonRequiredException] when [details.person] is null.
   Future<bool> _saveRecord(LicensureService licensureService, LicensureDetails details,
-      [LicensureProvider? licensureProvider]) async {
+      [LicensuresProvider? licensureProvider]) async {
     // TODO: save to db
     bool savedToDatabase = await licensureService.saveLicensureDetails(details);
 
@@ -102,109 +228,6 @@ class _LicensureDetailsScreenState extends State<LicensureDetailsScreen> {
     }
 
     return savedToDatabase;
-  }
-
-  Future<void> _handleSaveRecordAndExit(BuildContext context, LicensureDetails details) async {
-    LicensureService licensureService = Provider.of<LicensureService>(context, listen: false);
-    LicensureProvider licensureProvider = Provider.of<LicensureProvider>(context, listen: false);
-
-    NavigatorState navigator = Navigator.of(context);
-
-    try {
-      await _saveRecord(licensureService, details, licensureProvider);
-
-      navigator.pop();
-    } on DataException catch (ex) {
-      await showDialog(
-        context: context,
-        builder: (context) => SimpleDialog(
-          title: const Text('Save Error'),
-          children: <Widget>[
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 24.0).copyWith(bottom: 20.0),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(ex.message),
-                ],
-              ),
-            ),
-            TextButton(
-              child: const Text('OK'),
-              onPressed: () => Navigator.of(context).pop(),
-            ),
-          ],
-        ),
-      );
-    }
-  }
-
-  Future<LicensureDetails> _getLicensureDetails(BuildContext context) async {
-    if (widget.summary == null) {
-      return LicensureDetails.newRecord();
-    }
-
-    LicensureService service = Provider.of<LicensureService>(context, listen: false);
-    return await service.getLicensureDetailsById(widget.summary!.id);
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return FutureBuilder<LicensureDetails>(
-      future: _getLicensureDetails(context),
-      builder: (context, snapshot) {
-        if (snapshot.connectionState != ConnectionState.done || snapshot.hasError) {
-          return Scaffold(
-            appBar: AppBar(),
-            body: Center(
-              child: snapshot.connectionState != ConnectionState.done
-                  ? const CircularProgressIndicator()
-                  : Text(snapshot.error!.toString()),
-            ),
-          );
-        }
-
-        LicensureDetails details = snapshot.data!;
-
-        return ChangeNotifierProvider<LicensureDetails>.value(
-          value: details,
-          builder: (context, child) => Scaffold(
-            appBar: AppBar(
-              backgroundColor: details.licensureType == null ? null : getLicensureTypeColor(details.licensureType!),
-              actions: <Widget>[
-                Padding(
-                  padding: const EdgeInsets.all(12.0),
-                  child: Builder(
-                    builder: (context) {
-                      LicensureDetails details = Provider.of<LicensureDetails>(context);
-                      Color? appBarColor = details.licensureType == null
-                          ? Theme.of(context).appBarTheme.backgroundColor
-                          : getLicensureTypeColor(details.licensureType!);
-
-                      return TextButton.icon(
-                        onPressed: details.isModified || details.isNewRecord
-                            ? () => _handleSaveRecordAndExit(context, details)
-                            : null,
-                        icon: const Icon(Icons.save),
-                        label: const Text('Save'),
-                        style: TextButton.styleFrom(
-                          foregroundColor: _getContrastingColor(appBarColor),
-                        ),
-                      );
-                    },
-                  ),
-                ),
-              ],
-            ),
-            body: Form(
-              key: _formKey,
-              onWillPop: () async => await _isExitDesired(context, details),
-              child: _LicensureDetailsPage(details: details),
-            ),
-          ),
-        );
-      },
-    );
   }
 }
 

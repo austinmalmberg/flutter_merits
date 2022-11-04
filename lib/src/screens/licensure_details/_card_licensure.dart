@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_merits/src/providers/card_animation_provider.dart';
+import 'package:flutter_merits/src/providers/editing_controller.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 
@@ -7,22 +9,39 @@ import '../../data/licensure_status.dart';
 import '../../data/licensure_type.dart';
 import '../../theme/licensure_status.dart';
 import '../../theme/licensure_type.dart';
+import '_card_animations.dart';
 import '_card_base.dart';
 import '_licensure_type_icon.dart';
 import '_licensure_type_select_dialog.dart';
 
 class LicensureCardBuilder extends StatelessWidget {
-  const LicensureCardBuilder({super.key});
+  final double staggerFraction;
+
+  const LicensureCardBuilder({super.key, this.staggerFraction = 0.0});
 
   @override
   Widget build(BuildContext context) {
+    double width = MediaQuery.of(context).size.width;
+    CardAnimationProvider animationProvider = Provider.of<CardAnimationProvider>(context);
+
     LicensureType? type = context.select<LicensureDetails, LicensureType?>((details) => details.licensureType);
 
     if (type == null) {
-      return const _AddLicensureCard();
+      return GrowAnimation(
+        duration: animationProvider.scaleDuration,
+        scaleBuilder: (controller) => animationProvider.staggeredScaleAnimationBuilder(controller, staggerFraction),
+        child: const _AddLicensureCard(),
+      );
     }
 
-    return _LicensureCard(details: Provider.of<LicensureDetails>(context, listen: false));
+    return SlideAnimation(
+      duration: animationProvider.translateDuration,
+      slideBuilder: (controller) =>
+          animationProvider.staggeredTranslateAnimationBuilder(controller, width, staggerFraction),
+      child: _LicensureCard(
+        details: Provider.of<LicensureDetails>(context, listen: false),
+      ),
+    );
   }
 }
 
@@ -45,7 +64,7 @@ class _AddLicensureCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return AddDetailsButton(
-      label: const Text('Add Licensure'),
+      label: const Text('Licensure'),
       onPressed: () async => await _handleLicensureTypeSelect(context),
     );
   }
@@ -76,15 +95,36 @@ class _LicensureCardState extends State<_LicensureCard> {
   Widget build(BuildContext context) {
     if (widget.details.licensureType == null) throw ArgumentError.notNull('details.licensureType');
 
-    return LicensureDetailsCard.primary(
+    return LicensureDetailsCard(
       header: ListTile(
         leading: FittedBox(child: LicensureTypeIcon(type: widget.details.licensureType!, size: 58.0)),
-        title: Text(
-          widget.details.licensureType.toString(),
-          style: Theme.of(context).primaryTextTheme.headline5?.copyWith(
-                color: getLicensureTypeColor(widget.details.licensureType!),
-                fontWeight: FontWeight.bold,
-              ),
+        title: Row(
+          crossAxisAlignment: CrossAxisAlignment.end,
+          children: [
+            Text(
+              widget.details.licensureType.toString(),
+              style: Theme.of(context).primaryTextTheme.headline5?.copyWith(
+                    color: getLicensureTypeColor(widget.details.licensureType!),
+                    fontWeight: FontWeight.bold,
+                  ),
+            ),
+            Builder(builder: (context) {
+              bool isEditing = Provider.of<EditingController>(context).isEditing;
+
+              if (!isEditing) return const SizedBox.shrink();
+
+              return IconButton(
+                padding: const EdgeInsets.only(left: 16.0, top: 12.0),
+                onPressed: () {
+                  widget.details.licensureType = null;
+                },
+                icon: const Icon(
+                  Icons.remove_circle,
+                  color: Colors.red,
+                ),
+              );
+            }),
+          ],
         ),
         subtitle: Builder(builder: (context) {
           LicensureDetails details = Provider.of<LicensureDetails>(context);
@@ -99,15 +139,18 @@ class _LicensureCardState extends State<_LicensureCard> {
         }),
         trailing: SizedBox(
           width: 140.0,
-          child: TextFormField(
-            controller: _listingNumberController,
-            maxLines: 1,
-            onChanged: (value) => Provider.of<LicensureDetails>(context, listen: false).listingNumber = value,
-            decoration: const InputDecoration(
-              contentPadding: EdgeInsets.symmetric(vertical: 4.0),
-              label: Text('Listing #'),
-            ),
-          ),
+          child: Builder(builder: (context) {
+            return TextFormField(
+              readOnly: !Provider.of<EditingController>(context).isEditing,
+              controller: _listingNumberController,
+              maxLines: 1,
+              onChanged: (value) => Provider.of<LicensureDetails>(context, listen: false).listingNumber = value,
+              decoration: const InputDecoration(
+                contentPadding: EdgeInsets.symmetric(vertical: 4.0),
+                label: Text('Listing #'),
+              ),
+            );
+          }),
         ),
       ),
       body: Column(
@@ -115,15 +158,18 @@ class _LicensureCardState extends State<_LicensureCard> {
           const _LicensureDatesRow(),
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 14.0).copyWith(bottom: 20.0),
-            child: TextFormField(
-              controller: _commentController,
-              minLines: 4,
-              maxLines: 12,
-              onChanged: (value) => Provider.of<LicensureDetails>(context, listen: false).comment = value,
-              decoration: const InputDecoration(
-                label: Text('Comment'),
-              ),
-            ),
+            child: Builder(builder: (context) {
+              return TextFormField(
+                readOnly: !Provider.of<EditingController>(context).isEditing,
+                controller: _commentController,
+                minLines: 4,
+                maxLines: 12,
+                onChanged: (value) => Provider.of<LicensureDetails>(context, listen: false).comment = value,
+                decoration: const InputDecoration(
+                  label: Text('Comment'),
+                ),
+              );
+            }),
           ),
         ],
       ),
@@ -226,13 +272,15 @@ class _DateCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    bool isEditing = Provider.of<EditingController>(context).isEditing;
+
     return Card(
       child: ElevatedButton(
         style: ElevatedButton.styleFrom(
           backgroundColor: Theme.of(context).colorScheme.secondary.withOpacity(0.1),
         ),
-        onPressed: () => _onPressed(context),
-        onLongPress: date == null ? null : () => _onLongPress(context),
+        onPressed: isEditing ? () => _onPressed(context) : null,
+        onLongPress: !isEditing || date == null ? null : () => _onLongPress(context),
         child: Padding(
           padding: const EdgeInsets.all(8.0),
           child: Column(

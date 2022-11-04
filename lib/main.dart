@@ -44,8 +44,8 @@ class MeritsApp extends StatelessWidget {
         ChangeNotifierProvider<ThemeModeProvider>(
           create: (context) => ThemeModeProvider(ThemeMode.dark),
         ),
-        ChangeNotifierProxyProvider<LicensureService, LicensureProvider>(
-          create: (context) => LicensureProvider(),
+        ChangeNotifierProxyProvider<LicensureService, LicensuresProvider>(
+          create: (context) => LicensuresProvider(),
           update: (context, service, provider) => provider!
             ..setLicensureService(service)
             ..fetchOverviewList(),

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_merits/src/providers/card_animation_provider.dart';
 import 'package:flutter_merits/src/screens/shared_components/ssn_mask.dart';
 import 'package:provider/provider.dart';
 
@@ -6,33 +7,46 @@ import '../../data/licensure_details.dart';
 import '../../data/person.dart';
 import '../../theme/employment_status.dart';
 import '../../theme/theme_data.dart';
+import '_card_animations.dart';
 import '_card_base.dart';
 import '_data_tile.dart';
 import '_person_select_dialog.dart';
 import '_person_station_row.dart';
 
 class PersonCardBuilder extends StatelessWidget {
-  const PersonCardBuilder({super.key});
+  final double staggerFraction;
+
+  const PersonCardBuilder({super.key, this.staggerFraction = 0.0});
 
   @override
   Widget build(BuildContext context) {
+    double width = MediaQuery.of(context).size.width;
+    CardAnimationProvider animationProvider = Provider.of<CardAnimationProvider>(context);
+
     Person? person = context.select<LicensureDetails, Person?>((details) => details.person);
 
     if (person == null) {
-      return const _AddPersonCard();
+      return GrowAnimation(
+        duration: animationProvider.scaleDuration,
+        scaleBuilder: (controller) => animationProvider.staggeredScaleAnimationBuilder(controller, staggerFraction),
+        child: const _AddPersonCard(),
+      );
     }
 
-    return _PersonCard(person: person);
+    return SlideAnimation(
+      duration: animationProvider.translateDuration,
+      slideBuilder: (controller) =>
+          animationProvider.staggeredTranslateAnimationBuilder(controller, width, staggerFraction),
+      child: _PersonCard(person: person, staggerFraction: staggerFraction),
+    );
   }
 }
 
 class _PersonCard extends StatelessWidget {
   final Person person;
+  final double staggerFraction;
 
-  const _PersonCard({
-    Key? key,
-    required this.person,
-  }) : super(key: key);
+  const _PersonCard({Key? key, required this.person, required this.staggerFraction}) : super(key: key);
 
   final EdgeInsets _tilePadding = const EdgeInsets.symmetric(horizontal: 8.0, vertical: 10.0);
 
@@ -43,7 +57,7 @@ class _PersonCard extends StatelessWidget {
           color: Theme.of(context).disabledColor,
         );
 
-    return LicensureDetailsCard.primary(
+    return LicensureDetailsCard(
       header: ListTile(
         leading: FittedBox(
           child: Icon(
@@ -53,9 +67,24 @@ class _PersonCard extends StatelessWidget {
             shadows: iconShadows(context),
           ),
         ),
-        title: Text(
-          person.displayName(),
-          style: Theme.of(context).primaryTextTheme.headline5,
+        title: Row(
+          children: [
+            Text(
+              person.displayName(),
+              style: Theme.of(context).primaryTextTheme.headline5,
+            ),
+            if (Provider.of<LicensureDetails>(context, listen: false).isNewRecord)
+              IconButton(
+                padding: const EdgeInsets.only(left: 16.0, top: 4.0),
+                onPressed: () {
+                  Provider.of<LicensureDetails>(context, listen: false).person = null;
+                },
+                icon: const Icon(
+                  Icons.remove_circle,
+                  color: Colors.red,
+                ),
+              ),
+          ],
         ),
         trailing: MaskedSsnText(
           ssn: person.ssn,
@@ -102,7 +131,7 @@ class _AddPersonCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return AddDetailsButton(
       onPressed: () async => await _handlePersonSelect(context),
-      label: const Text('Add Person'),
+      label: const Text('Person'),
     );
   }
 }

@@ -13,7 +13,7 @@ class HomeTab extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    LicensureProvider licensureProvider = Provider.of<LicensureProvider>(context);
+    LicensuresProvider licensureProvider = Provider.of<LicensuresProvider>(context);
     List<LicensureSummary>? summaries = licensureProvider.licensures;
 
     if (summaries == null) {
@@ -31,13 +31,14 @@ class HomeTab extends StatelessWidget {
               ThemeModeProvider themeMode = Provider.of<ThemeModeProvider>(context, listen: false);
               themeMode.toggle();
             },
-            icon: Icon(Provider.of<ThemeModeProvider>(context).mode == ThemeMode.dark ? Icons.light_mode : Icons.dark_mode),
+            icon: Icon(
+                Provider.of<ThemeModeProvider>(context).mode == ThemeMode.dark ? Icons.light_mode : Icons.dark_mode),
           ),
         ],
       ),
       body: RefreshIndicator(
         onRefresh: () async {
-          LicensureProvider provider = Provider.of<LicensureProvider>(context, listen: false);
+          LicensuresProvider provider = Provider.of<LicensuresProvider>(context, listen: false);
           await provider.fetchOverviewList();
         },
         child: ListView.builder(

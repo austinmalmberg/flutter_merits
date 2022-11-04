@@ -3,8 +3,9 @@ import 'package:flutter/cupertino.dart';
 import '../data/licensure_summary.dart';
 import '../services/licensure_service.dart';
 
-class LicensureProvider extends ChangeNotifier {
-  LicensureProvider([LicensureService? service, LicensureSummarySortBuilder? sortBuilder])
+/// An object for maintaining a [LicensureSummary] list.
+class LicensuresProvider extends ChangeNotifier {
+  LicensuresProvider([LicensureService? service, LicensureSummarySortBuilder? sortBuilder])
       : _service = service,
         _sortBuilder = sortBuilder ??
             LicensureSummarySortBuilder([
