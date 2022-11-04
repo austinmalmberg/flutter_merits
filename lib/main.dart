@@ -13,10 +13,10 @@ import 'src/theme/theme_data.dart';
 import 'src/theme/theme_mode_provider.dart';
 
 void main() {
-  const LicensureService licensureService = TestLicensureService();
-  const PersonService personService = TestPersonService();
+  final LicensureService licensureService = HttpTestLicensureService();
+  const PersonService personService = LocalTestPersonService();
 
-  const app = MeritsApp(
+  final app = MeritsApp(
     licensureService: licensureService,
     personService: personService,
   );

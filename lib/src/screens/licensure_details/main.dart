@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_merits/src/application_error.dart';
+import 'package:flutter_merits/src/utils/application_exception.dart';
 import 'package:provider/provider.dart';
 
 import '../../data/licensure_summary.dart';
@@ -41,7 +41,7 @@ class _LicensureDetailsScreenState extends State<LicensureDetailsScreen> {
             body: Center(
               child: snapshot.connectionState != ConnectionState.done
                   ? const CircularProgressIndicator()
-                  : Text(snapshot.error!.toString()),
+                  : Text((snapshot.error! as ApplicationException).message),
             ),
           );
         }

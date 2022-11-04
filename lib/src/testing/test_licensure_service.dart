@@ -1,15 +1,20 @@
+import 'dart:convert';
 import 'dart:math';
 
+import 'package:http/http.dart' as http;
+
+import '../utils/application_exception.dart';
 import '../data/licensure_details.dart';
 import '../data/licensure_summary.dart';
+import '../utils/http_exceptions.dart';
 import 'test_data.dart';
 import '../services/licensure_service.dart';
 
-class TestLicensureService implements LicensureService {
-  const TestLicensureService() : super();
+class LocalTestLicensureService implements LicensureService {
+  const LocalTestLicensureService() : super();
 
   @override
-  Future<List<LicensureSummary>> fetchOverviewList() async {
+  Future<List<LicensureSummary>> fetchLicensureList() async {
     await Future.delayed(const Duration(milliseconds: 400));
 
     return licensureSummaries;
@@ -38,4 +43,8 @@ class TestLicensureService implements LicensureService {
 
     return true;
   }
+}
+
+class HttpTestLicensureService extends HttpLicensureService {
+  HttpTestLicensureService() : super('http://localhost:5000');
 }

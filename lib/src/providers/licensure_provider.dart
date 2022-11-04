@@ -2,6 +2,7 @@ import 'package:flutter/cupertino.dart';
 
 import '../data/licensure_summary.dart';
 import '../services/licensure_service.dart';
+import '../utils/licensure_sort.dart';
 
 /// An object for maintaining a [LicensureSummary] list.
 class LicensuresProvider extends ChangeNotifier {
@@ -65,7 +66,7 @@ class LicensuresProvider extends ChangeNotifier {
       The LicensureService is null. Use setService(LicensureService) before using this method.
     ''');
 
-    _licensures = await _service!.fetchOverviewList();
+    _licensures = await _service!.fetchLicensureList();
     _licensures?.sort(sortOrder);
 
     notifyListeners();

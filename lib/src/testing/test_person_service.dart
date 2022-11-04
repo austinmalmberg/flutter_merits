@@ -3,8 +3,8 @@ import 'package:flutter_merits/src/services/person_service.dart';
 import '../data/person.dart';
 import 'test_data.dart';
 
-class TestPersonService implements PersonService {
-  const TestPersonService();
+class LocalTestPersonService implements PersonService {
+  const LocalTestPersonService();
 
   @override
   Future<List<Person>> fetchPersonsByLikeName(String text) async {
@@ -24,4 +24,8 @@ class TestPersonService implements PersonService {
       samplePerson,
     ];
   }
+}
+
+class HttpTestPersonService extends HttpPersonService {
+  HttpTestPersonService() : super('http://localhost:5000');
 }

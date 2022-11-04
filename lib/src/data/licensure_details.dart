@@ -1,6 +1,8 @@
 import 'activity_entry.dart';
 import 'licensure_status.dart';
 import 'licensure_summary.dart';
+import 'licensure_type.dart';
+import 'person.dart';
 
 class LicensureDetails extends LicensureSummary {
   LicensureDetails({
@@ -64,4 +66,39 @@ class LicensureDetails extends LicensureSummary {
   }
 
   final List<ActivityEntry> activityLog;
+
+  factory LicensureDetails.fromJson(Map<String, dynamic> json) {
+    LicensureStatus licensureStatus = LicensureStatus.values
+        .firstWhere((element) => element.toString().toLowerCase() == json['status'].toString().toLowerCase());
+    LicensureType licensureType = LicensureType.values
+        .firstWhere((element) => element.toString().toLowerCase() == json['licensureType'].toString().toLowerCase());
+    List<ActivityEntry> activityLog =
+        (json['activityLog'] as List<dynamic>).map((entry) => ActivityEntry.fromJson(entry)).toList();
+
+    return LicensureDetails(
+      id: json['id'],
+      status: licensureStatus,
+      expiration: DateTime.parse(json['expiration']),
+      lastVerified: DateTime.parse(json['lastVerified']),
+      licensureType: licensureType,
+      listingNumber: json['listingNumber'] ?? '',
+      person: Person.fromJson(json['person']),
+      activityLog: activityLog,
+      issueDate: DateTime.parse(json['issueDate']),
+      comment: json['comment'] ?? '',
+    );
+  }
+
+  @override
+  Map<String, dynamic> toJson() => <String, dynamic>{
+        'id': id,
+        'status': status,
+        'expiration': expiration,
+        'lastVerified': lastVerified,
+        'licensureType': licensureType,
+        'listingNumber': listingNumber,
+        'person': person?.toJson(),
+        'issueDate': issueDate,
+        'comment': comment,
+      };
 }

@@ -18,6 +18,27 @@ class Person {
   });
 
   String displayName() => '$lastName, $firstName';
+
+  factory Person.fromJson(Map<String, dynamic> json) => Person(
+        firstName: json['firstName'],
+        lastName: json['lastName'],
+        status: EmploymentStatus.values
+            .firstWhere((element) => element.toString().toLowerCase() == json['status'].toString().toLowerCase()),
+        ssn: json['ssn'],
+        department: json['department'] ?? '',
+        area: json['area'] ?? '',
+        title: json['title'] ?? '',
+      );
+
+  Map<String, dynamic> toJson() => <String, dynamic>{
+        'firstName': firstName,
+        'lastName': lastName,
+        'status': status,
+        'ssn': ssn,
+        'department': department,
+        'area': area,
+        'title': title,
+      };
 }
 
 enum EmploymentStatus {
