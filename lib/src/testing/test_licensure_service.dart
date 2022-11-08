@@ -1,12 +1,9 @@
-import 'dart:convert';
 import 'dart:math';
 
 import 'package:http/http.dart' as http;
 
-import '../utils/application_exception.dart';
 import '../data/licensure_details.dart';
 import '../data/licensure_summary.dart';
-import '../utils/http_exceptions.dart';
 import 'test_data.dart';
 import '../services/licensure_service.dart';
 
@@ -45,6 +42,6 @@ class LocalTestLicensureService implements LicensureService {
   }
 }
 
-class HttpTestLicensureService extends HttpLicensureService {
-  HttpTestLicensureService() : super('http://localhost:5000');
+class DevHttpLicensureService extends HttpLicensureService {
+  DevHttpLicensureService([http.Client? client]) : super('http://localhost:5000', client: client);
 }

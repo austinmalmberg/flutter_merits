@@ -154,25 +154,56 @@ class LicensureSummary extends ChangeNotifier with ModificationMixin {
 
   bool get isNewRecord => id <= 0;
 
-  factory LicensureSummary.fromJson(Map<String, dynamic> json) => LicensureSummary(
-        id: json['id'],
-        status: LicensureStatus.values
-            .firstWhere((element) => element.toString().toLowerCase() == json['status'].toString().toLowerCase()),
-        expiration: DateTime.parse(json['expiration']),
-        lastVerified: DateTime.parse(json['lastVerified']),
-        licensureType: LicensureType.values.firstWhere(
-            (element) => element.toString().toLowerCase() == json['licensureType'].toString().toLowerCase()),
-        listingNumber: json['listingNumber'] ?? '',
-        person: Person.fromJson(json['person']),
-      );
+  factory LicensureSummary.fromJson(Map<String, dynamic> json) {
+    String? expirationStr = json['expiration'];
+    String? lastVerifiedStr = json['lastVerified'];
+    String? licensureTypeStr = json['licensureType'];
+
+    LicensureType? licensureType;
+    if (licensureTypeStr != null) {
+      for (LicensureType type in LicensureType.values) {
+        if (type.toString().toLowerCase() == licensureTypeStr.toLowerCase()) {
+          licensureType = type;
+          break;
+        }
+      }
+    }
+
+    return LicensureSummary(
+      id: json['id'],
+      status: LicensureStatus.values
+          .firstWhere((status) => status.toString().toLowerCase() == json['status'].toString().toLowerCase()),
+      expiration: expirationStr == null ? null : DateTime.parse(expirationStr),
+      lastVerified: lastVerifiedStr == null ? null : DateTime.parse(lastVerifiedStr),
+      licensureType: licensureType,
+      listingNumber: json['listingNumber'] ?? '',
+      person: Person.fromJson(json['person']),
+    );
+  }
 
   Map<String, dynamic> toJson() => <String, dynamic>{
         'id': id,
-        'status': status,
-        'expiration': expiration,
-        'lastVerified': lastVerified,
-        'licensureType': licensureType,
+        'status': status.toString(),
+        'expiration': expiration?.toIso8601String(),
+        'lastVerified': lastVerified?.toIso8601String(),
+        'licensureType': licensureType?.toString(),
         'listingNumber': listingNumber,
         'person': person?.toJson(),
       };
+
+  @override
+  bool operator ==(Object other) {
+    if (other is! LicensureSummary) return false;
+
+    return id == other.id &&
+        status == other.status &&
+        licensureType == other.licensureType &&
+        person == other.person &&
+        listingNumber == other.listingNumber &&
+        expiration == other.expiration &&
+        lastVerified == other.lastVerified;
+  }
+
+  @override
+  int get hashCode => super.hashCode;
 }

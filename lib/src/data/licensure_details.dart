@@ -22,7 +22,7 @@ class LicensureDetails extends LicensureSummary {
   factory LicensureDetails.fromSummary(
     LicensureSummary summary, {
     DateTime? issueDate,
-    String comments = '',
+    String comment = '',
     List<ActivityEntry> activityLog = const [],
   }) =>
       LicensureDetails(
@@ -34,7 +34,7 @@ class LicensureDetails extends LicensureSummary {
         expiration: summary.expiration,
         lastVerified: summary.lastVerified,
         issueDate: issueDate,
-        comment: comments,
+        comment: comment,
         activityLog: activityLog,
       );
 
@@ -68,23 +68,39 @@ class LicensureDetails extends LicensureSummary {
   final List<ActivityEntry> activityLog;
 
   factory LicensureDetails.fromJson(Map<String, dynamic> json) {
+    String? expirationStr = json['expiration'];
+    String? lastVerifiedStr = json['lastVerified'];
+    String? issueDateStr = json['issueDate'];
+    String? licensureTypeStr = json['licensureType'];
+    Map<String, dynamic>? person = json['person'];
+
+    LicensureType? licensureType;
+    if (licensureTypeStr != null) {
+      for (LicensureType type in LicensureType.values) {
+        if (type.toString().toLowerCase() == licensureTypeStr.toLowerCase()) {
+          licensureType = type;
+          break;
+        }
+      }
+    }
     LicensureStatus licensureStatus = LicensureStatus.values
         .firstWhere((element) => element.toString().toLowerCase() == json['status'].toString().toLowerCase());
-    LicensureType licensureType = LicensureType.values
-        .firstWhere((element) => element.toString().toLowerCase() == json['licensureType'].toString().toLowerCase());
-    List<ActivityEntry> activityLog =
-        (json['activityLog'] as List<dynamic>).map((entry) => ActivityEntry.fromJson(entry)).toList();
+
+    List<dynamic>? activityLogList = json['activityLog'];
+    final List<ActivityEntry> activityLog = activityLogList == null
+        ? <ActivityEntry>[]
+        : activityLogList.map((entry) => ActivityEntry.fromJson(entry)).toList();
 
     return LicensureDetails(
       id: json['id'],
       status: licensureStatus,
-      expiration: DateTime.parse(json['expiration']),
-      lastVerified: DateTime.parse(json['lastVerified']),
+      expiration: expirationStr == null ? null : DateTime.parse(expirationStr),
+      lastVerified: lastVerifiedStr == null ? null : DateTime.parse(lastVerifiedStr),
       licensureType: licensureType,
       listingNumber: json['listingNumber'] ?? '',
-      person: Person.fromJson(json['person']),
+      person: person == null ? null : Person.fromJson(person),
       activityLog: activityLog,
-      issueDate: DateTime.parse(json['issueDate']),
+      issueDate: issueDateStr == null ? null : DateTime.parse(issueDateStr),
       comment: json['comment'] ?? '',
     );
   }
@@ -92,13 +108,32 @@ class LicensureDetails extends LicensureSummary {
   @override
   Map<String, dynamic> toJson() => <String, dynamic>{
         'id': id,
-        'status': status,
-        'expiration': expiration,
-        'lastVerified': lastVerified,
-        'licensureType': licensureType,
+        'status': status.toString(),
+        'expiration': expiration?.toIso8601String(),
+        'lastVerified': lastVerified?.toIso8601String(),
+        'licensureType': licensureType?.toString(),
         'listingNumber': listingNumber,
         'person': person?.toJson(),
-        'issueDate': issueDate,
+        'acivityLog': activityLog.map((entry) => entry.toJson()).toList(),
+        'issueDate': issueDate?.toIso8601String(),
         'comment': comment,
       };
+
+  @override
+  bool operator ==(Object other) {
+    if (other is! LicensureDetails) return false;
+
+    return id == other.id &&
+        status == other.status &&
+        expiration == other.expiration &&
+        lastVerified == other.lastVerified &&
+        licensureType == other.licensureType &&
+        listingNumber == other.listingNumber &&
+        person == other.person &&
+        issueDate == other.issueDate &&
+        comment == other.comment;
+  }
+
+  @override
+  int get hashCode => super.hashCode;
 }

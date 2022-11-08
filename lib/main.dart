@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_merits/src/providers/licensure_provider.dart';
 import 'package:flutter_merits/src/services/person_service.dart';
+import 'package:http/http.dart' as http;
 import 'package:provider/provider.dart';
 
 import 'src/screens/home/main.dart';
@@ -13,8 +14,9 @@ import 'src/theme/theme_data.dart';
 import 'src/theme/theme_mode_provider.dart';
 
 void main() {
-  final LicensureService licensureService = HttpTestLicensureService();
-  const PersonService personService = LocalTestPersonService();
+  final http.Client client = http.Client();
+  final LicensureService licensureService = DevHttpLicensureService(client);
+  final PersonService personService = DevHttpPersonService(client);
 
   final app = MeritsApp(
     licensureService: licensureService,

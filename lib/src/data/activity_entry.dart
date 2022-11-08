@@ -14,8 +14,18 @@ class ActivityEntry {
       );
 
   Map<String, dynamic> toJson() => <String, dynamic>{
-        'timestamp': timestamp,
-        'creator': creator,
+        'timestamp': timestamp.toIso8601String(),
+        'creator': creator.toJson(),
         'comment': comment,
       };
+
+  @override
+  bool operator ==(Object other) {
+    if (other is! ActivityEntry) return false;
+
+    return timestamp == other.timestamp && creator == other.creator && comment == other.comment;
+  }
+
+  @override
+  int get hashCode => super.hashCode;
 }

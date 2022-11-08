@@ -49,7 +49,7 @@ LicensureDetails sampleDetails = fromSummary(sampleSummary);
 
 LicensureDetails fromSummary(LicensureSummary summary) => LicensureDetails.fromSummary(
       summary,
-      comments: 'This is a sample comment',
+      comment: 'This is a sample comment',
       issueDate:
           summary.status == LicensureStatus.pending ? null : DateTime.now().subtract(const Duration(days: 4 * 30)),
       activityLog: <ActivityEntry>[

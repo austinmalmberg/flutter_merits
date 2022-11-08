@@ -13,15 +13,6 @@ class HomeTab extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    LicensuresProvider licensureProvider = Provider.of<LicensuresProvider>(context);
-    List<LicensureSummary>? summaries = licensureProvider.licensures;
-
-    if (summaries == null) {
-      return const Center(
-        child: CircularProgressIndicator(),
-      );
-    }
-
     return Scaffold(
       primary: false,
       appBar: AppBar(
@@ -36,27 +27,61 @@ class HomeTab extends StatelessWidget {
           ),
         ],
       ),
-      body: RefreshIndicator(
-        onRefresh: () async {
-          LicensuresProvider provider = Provider.of<LicensuresProvider>(context, listen: false);
-          await provider.fetchOverviewList();
-        },
-        child: ListView.builder(
-          itemCount: summaries.length,
-          itemBuilder: (context, index) {
-            LicensureSummary summary = summaries[index];
+      body: Builder(
+        builder: (context) {
+          LicensuresProvider provider = Provider.of<LicensuresProvider>(context);
 
-            return _LicensureSummaryListTile(
-              summary: summary,
-              onTap: () {
-                Navigator.of(context).pushNamed(
-                  Routes.details,
-                  arguments: LicensureDetailsArguments(summary: summary, index: index),
+          if (provider.licensures == null) {
+            return Center(
+              child: provider.hasError
+
+                  // Error + retry button
+                  ? Column(
+                      children: <Widget>[
+                        Padding(
+                          padding: const EdgeInsets.all(20.0),
+                          child: Text(provider.error!.message),
+                        ),
+                        Padding(
+                          padding: const EdgeInsets.all(8.0),
+                          child: ElevatedButton(
+                            onPressed: () async {
+                              await Provider.of<LicensuresProvider>(context, listen: false).fetchOverviewList();
+                            },
+                            child: const Text('Retry'),
+                          ),
+                        ),
+                      ],
+                    )
+
+                  // Load indicator while no error
+                  : const CircularProgressIndicator(),
+            );
+          }
+
+          return RefreshIndicator(
+            onRefresh: () async {
+              LicensuresProvider provider = Provider.of<LicensuresProvider>(context, listen: false);
+              await provider.fetchOverviewList();
+            },
+            child: ListView.builder(
+              itemCount: provider.licensures!.length,
+              itemBuilder: (context, index) {
+                LicensureSummary summary = provider.licensures![index];
+
+                return _LicensureSummaryListTile(
+                  summary: summary,
+                  onTap: () {
+                    Navigator.of(context).pushNamed(
+                      Routes.details,
+                      arguments: LicensureDetailsArguments(summary: summary, index: index),
+                    );
+                  },
                 );
               },
-            );
-          },
-        ),
+            ),
+          );
+        },
       ),
     );
   }

@@ -1,4 +1,5 @@
 import 'package:flutter/cupertino.dart';
+import 'package:flutter_merits/src/services/http_service_base.dart';
 
 import '../data/licensure_summary.dart';
 import '../services/licensure_service.dart';
@@ -38,6 +39,11 @@ class LicensuresProvider extends ChangeNotifier {
     _service = service;
   }
 
+  ServiceException? _error;
+  ServiceException? get error => _error;
+
+  bool get hasError => error != null;
+
   void add(LicensureSummary summary) {
     if (_licensures == null) return;
 
@@ -60,14 +66,27 @@ class LicensuresProvider extends ChangeNotifier {
 
   /// Fetches the [licensures] from the [LicensureService].
   ///
-  /// The list will be sorted as directed by the [sortBuilder] or [sortOrder], when provided, and the original sort function will be overridden. Otherwise, the original sort ordering will be used.
+  /// The list will be sorted as directed by the [sortBuilder] or [sortOrder], when provided,
+  /// and the original sort function will be overridden. Otherwise, the original sort ordering
+  /// will be used.
+  ///
+  /// Throws a [ServiceException] if an error occurs.
   Future<void> fetchOverviewList() async {
     assert(_service != null, '''
       The LicensureService is null. Use setService(LicensureService) before using this method.
     ''');
 
-    _licensures = await _service!.fetchLicensureList();
-    _licensures?.sort(sortOrder);
+    _error = null;
+    _licensures = null;
+
+    notifyListeners();
+
+    try {
+      _licensures = await _service!.fetchLicensureList();
+      _licensures?.sort(sortOrder);
+    } on ServiceException catch (ex) {
+      _error = ex;
+    }
 
     notifyListeners();
   }

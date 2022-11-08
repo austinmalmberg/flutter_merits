@@ -33,12 +33,28 @@ class Person {
   Map<String, dynamic> toJson() => <String, dynamic>{
         'firstName': firstName,
         'lastName': lastName,
-        'status': status,
+        'status': status.toString(),
         'ssn': ssn,
         'department': department,
         'area': area,
         'title': title,
       };
+
+  @override
+  bool operator ==(Object other) {
+    if (other is! Person) return false;
+
+    return firstName == other.firstName &&
+        lastName == other.lastName &&
+        status == other.status &&
+        ssn == other.ssn &&
+        department == other.department &&
+        area == other.area &&
+        title == other.title;
+  }
+
+  @override
+  int get hashCode => super.hashCode;
 }
 
 enum EmploymentStatus {

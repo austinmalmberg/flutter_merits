@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_merits/src/screens/shared_components/ssn_mask.dart';
+import 'package:flutter_merits/src/services/http_service_base.dart';
 import 'package:provider/provider.dart';
 
 import '../../data/person.dart';
@@ -18,22 +19,78 @@ class PersonSelectDialog extends StatefulWidget {
 
 class _PersonSelectDialogState extends State<PersonSelectDialog> {
   List<Person>? _results = <Person>[];
+  HttpServiceException? _error;
 
-  Future<void> _handlePerformSearch(String value) async {
+  Future<void> _handlePerformSearch(BuildContext context, String value) async {
     if (mounted) {
-      setState(() => _results = null);
+      setState(() {
+        _error = null;
+        _results = null;
+      });
     }
 
     PersonService service = Provider.of<PersonService>(context, listen: false);
-    List<Person> results = await service.fetchPersonsByLikeName(value);
 
-    if (mounted) {
-      setState(() => _results = results);
+    try {
+      List<Person> results = await service.fetchPersonsByLikeName(value);
+
+      if (mounted) {
+        setState(() => _results = results);
+      }
+    } on HttpServiceException catch (ex) {
+      if (mounted) {
+        setState(() => _error = ex);
+      }
     }
   }
 
   void _popDialog(BuildContext context, [Person? person]) {
     Navigator.of(context).pop<Person?>(person);
+  }
+
+  Widget _getBody(BuildContext context) {
+    if (_error != null) {
+      return Text(_error!.message);
+    }
+
+    if (_results != null) {
+      return ListView.builder(
+        itemCount: _results!.length,
+        itemBuilder: (context, index) {
+          Person person = _results![index];
+
+          return ListTile(
+            onTap: () => _popDialog(context, person),
+            leading: Column(
+              children: [
+                EmploymentStatusChip(
+                  status: person.status,
+                  scale: 0.8,
+                ),
+              ],
+            ),
+            title: Text(
+              person.displayName(),
+              textScaleFactor: 1.4,
+            ),
+            subtitle: PersonStationRow(
+              area: person.area,
+              department: person.department,
+              tilePadding: const EdgeInsets.symmetric(vertical: 6.0),
+            ),
+            trailing: Column(
+              children: <Widget>[
+                MaskedSsnText(ssn: person.ssn),
+              ],
+            ),
+          );
+        },
+      );
+    }
+
+    return const Center(
+      child: CircularProgressIndicator(),
+    );
   }
 
   @override
@@ -46,50 +103,17 @@ class _PersonSelectDialogState extends State<PersonSelectDialog> {
           children: <Widget>[
             const Padding(
               padding: EdgeInsets.only(top: 20.0),
-              child: Text('Select a person for this licensure'),
+              child: Text('Select a person'),
             ),
             Padding(
               padding: const EdgeInsets.only(bottom: 20.0),
-              child: _SearchRow(onSubmit: _handlePerformSearch),
+              child: _SearchRow(
+                onSubmit: (text) => _handlePerformSearch(context, text),
+              ),
             ),
 
             Expanded(
-              child: _results == null
-                  ? const Center(
-                      child: CircularProgressIndicator(),
-                    )
-                  : ListView.builder(
-                      itemCount: _results!.length,
-                      itemBuilder: (context, index) {
-                        Person person = _results![index];
-
-                        return ListTile(
-                          onTap: () => _popDialog(context, person),
-                          leading: Column(
-                            children: [
-                              EmploymentStatusChip(
-                                status: person.status,
-                                scale: 0.8,
-                              ),
-                            ],
-                          ),
-                          title: Text(
-                            person.displayName(),
-                            textScaleFactor: 1.4,
-                          ),
-                          subtitle: PersonStationRow(
-                            area: person.area,
-                            department: person.department,
-                            tilePadding: const EdgeInsets.symmetric(vertical: 6.0),
-                          ),
-                          trailing: Column(
-                            children: <Widget>[
-                              MaskedSsnText(ssn: person.ssn),
-                            ],
-                          ),
-                        );
-                      },
-                    ),
+              child: _getBody(context),
             ),
 
             // Action button row

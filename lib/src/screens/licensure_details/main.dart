@@ -159,7 +159,7 @@ class _LicensureDetailsScreenState extends State<LicensureDetailsScreen> {
 
     try {
       await _saveRecord(licensureService, details, licensureProvider);
-    } on DataException catch (ex) {
+    } on ServiceDataException catch (ex) {
       await _showSaveErrorDialog(ex);
 
       return false;
@@ -178,7 +178,14 @@ class _LicensureDetailsScreenState extends State<LicensureDetailsScreen> {
       await _saveRecord(licensureService, details, licensureProvider);
 
       navigator.pop();
-    } on DataException catch (ex) {
+    } on ServiceDataException catch (ex) {
+      // ScaffoldMessenger.maybeOf(context)
+      //   ?..clearSnackBars()
+      //   ..showSnackBar(
+      //     SnackBar(
+      //       content: Text(ex.message),
+      //     ),
+      //   );
       await _showSaveErrorDialog(ex);
     }
   }
@@ -215,7 +222,6 @@ class _LicensureDetailsScreenState extends State<LicensureDetailsScreen> {
   /// Throws a [PersonRequiredException] when [details.person] is null.
   Future<bool> _saveRecord(LicensureService licensureService, LicensureDetails details,
       [LicensuresProvider? licensureProvider]) async {
-    // TODO: save to db
     bool savedToDatabase = await licensureService.saveLicensureDetails(details);
 
     if (!savedToDatabase || licensureProvider == null) return savedToDatabase;

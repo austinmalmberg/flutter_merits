@@ -1,6 +1,5 @@
 import 'dart:convert';
 
-import 'package:flutter_merits/src/utils/http_exceptions.dart';
 import 'package:http/http.dart' as http;
 import 'package:flutter_merits/src/services/http_service_base.dart';
 
@@ -24,12 +23,17 @@ class HttpPersonService extends HttpServiceBase<PersonEndpoints> implements Pers
   Future<List<Person>> fetchPersonsByLikeName(String text) async {
     Uri url = Uri.parse('$baseUrl${endpoints.search}?text=$text');
 
-    http.Response response = await client.get(url);
+    http.Response response;
+    try {
+      response = await client.get(url);
+    } on Exception catch (ex) {
+      throw HttpServiceException.connectionError(inner: ex);
+    }
 
     if (response.statusCode != 200) {
       throw response.body.isEmpty
-          ? ServiceException.statusCode(response.statusCode)
-          : ServiceException.fromJson(jsonDecode(response.body) as Map<String, dynamic>, response.statusCode);
+          ? HttpServiceException.statusCode(response.statusCode)
+          : HttpServiceException.fromJson(jsonDecode(response.body) as Map<String, dynamic>, response.statusCode);
     }
 
     List<dynamic> data = jsonDecode(response.body) as List<dynamic>;
